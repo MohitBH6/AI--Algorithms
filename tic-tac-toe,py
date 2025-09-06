@@ -1,0 +1,76 @@
+# tic_tac_toe.py
+import math
+
+def print_board(b):
+    for i in range(3):
+        print("|".join(b[i*3:(i+1)*3]))
+        if i<2: print("-+-+-")
+
+def winner(board):
+    wins = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+    for a,b,c in wins:
+        if board[a] == board[b] == board[c] and board[a] != " ":
+            return board[a]
+    if " " not in board:
+        return "Draw"
+    return None
+
+def minimax(board, is_maximizing):
+    w = winner(board)
+    if w == "O": return 1
+    if w == "X": return -1
+    if w == "Draw": return 0
+    if is_maximizing:
+        best = -math.inf
+        for i in range(9):
+            if board[i]==" ":
+                board[i]="O"
+                val = minimax(board, False)
+                board[i]=" "
+                best = max(best, val)
+        return best
+    else:
+        best = math.inf
+        for i in range(9):
+            if board[i]==" ":
+                board[i]="X"
+                val = minimax(board, True)
+                board[i]=" "
+                best = min(best, val)
+        return best
+
+def best_move(board):
+    best_val = -math.inf
+    move = None
+    for i in range(9):
+        if board[i]==" ":
+            board[i]="O"
+            val = minimax(board, False)
+            board[i]=" "
+            if val > best_val:
+                best_val = val
+                move = i
+    return move
+
+def play():
+    board = [" "]*9
+    print("You are X, AI is O")
+    while True:
+        print_board(board)
+        w = winner(board)
+        if w:
+            print("Result:", w)
+            break
+        # human move
+        move = int(input("Enter position 0-8: "))
+        if board[move]!=" ":
+            print("Invalid")
+            continue
+        board[move]="X"
+        if winner(board): continue
+        ai = best_move(board)
+        if ai is not None:
+            board[ai]="O"
+
+if __name__ == "__main__":
+    play()

@@ -1,0 +1,38 @@
+# water_jug.py
+from collections import deque
+
+def water_jug(cap1, cap2, target):
+    start = (0,0)
+    q = deque([(start, [])])
+    seen = {start}
+    while q:
+        (x,y), path = q.popleft()
+        if x == target or y == target:
+            return path + [("result", (x,y))]
+        # possible operations
+        ops = []
+        ops.append(((cap1, y), f"fill A -> ({cap1},{y})"))
+        ops.append(((x, cap2), f"fill B -> ({x},{cap2})"))
+        ops.append(((0, y), f"empty A -> (0,{y})"))
+        ops.append(((x, 0), f"empty B -> ({x},0)"))
+        # pour A -> B
+        transfer = min(x, cap2 - y)
+        ops.append(((x-transfer, y+transfer), f"pour A->B {transfer} -> ({x-transfer},{y+transfer})"))
+        # pour B -> A
+        transfer = min(y, cap1 - x)
+        ops.append(((x+transfer, y-transfer), f"pour B->A {transfer} -> ({x+transfer},{y-transfer})"))
+        for st, desc in ops:
+            if st in seen: continue
+            seen.add(st)
+            q.append((st, path+[desc]))
+    return None
+
+if __name__ == "__main__":
+    cap1, cap2, target = 4, 3, 2
+    sol = water_jug(cap1, cap2, target)
+    print("Solution steps:")
+    if sol:
+        for step in sol:
+            print(step)
+    else:
+        print("No solution")

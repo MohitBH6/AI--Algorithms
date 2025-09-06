@@ -1,0 +1,136 @@
+# eight_puzzle.py
+from collections import deque
+import heapq
+import random
+import math
+import time
+
+GOAL = (1,2,3,4,5,6,7,8,0)  # 0 = blank
+
+def neighbors(state):
+    """Return list of (new_state, move) pairs. move is direction string."""
+    s = list(state)
+    idx = s.index(0)
+    r, c = divmod(idx, 3)
+    moves = []
+    for dr, dc, name in [(-1,0,'U'), (1,0,'D'), (0,-1,'L'), (0,1,'R')]:
+        nr, nc = r+dr, c+dc
+        if 0 <= nr < 3 and 0 <= nc < 3:
+            nidx = nr*3 + nc
+            ns = s[:]
+            ns[idx], ns[nidx] = ns[nidx], ns[idx]
+            moves.append((tuple(ns), name))
+    return moves
+
+def misplaced_tiles(state):
+    return sum(1 for i,v in enumerate(state) if v!=0 and v!=GOAL[i])
+
+def manhattan(state):
+    dist = 0
+    for i, v in enumerate(state):
+        if v==0: continue
+        goal_pos = v-1
+        r1,c1 = divmod(i,3)
+        r2,c2 = divmod(goal_pos,3)
+        dist += abs(r1-r2)+abs(c1-c2)
+    return dist
+
+# BFS (shortest)
+def bfs(start):
+    if start==GOAL: return []
+    q = deque([(start, [])])
+    seen = {start}
+    while q:
+        st, path = q.popleft()
+        for nst, move in neighbors(st):
+            if nst in seen: continue
+            if nst==GOAL: return path + [move]
+            seen.add(nst)
+            q.append((nst, path+[move]))
+    return None
+
+# DFS (with optional depth limit)
+def dfs(start, limit=50):
+    seen = set()
+    def rec(st, path):
+        if st==GOAL:
+            return path
+        if len(path) >= limit:
+            return None
+        seen.add(st)
+        for nst, move in neighbors(st):
+            if nst in seen: continue
+            res = rec(nst, path+[move])
+            if res: return res
+        seen.remove(st)
+        return None
+    return rec(start, [])
+
+# A* (uses Manhattan by default) - good for comparison to hill climbing
+def astar(start, heuristic=manhattan):
+    open_heap = []
+    heapq.heappush(open_heap, (heuristic(start), 0, start, []))
+    gscore = {start: 0}
+    while open_heap:
+        f, g, st, path = heapq.heappop(open_heap)
+        if st==GOAL:
+            return path
+        for nst, move in neighbors(st):
+            ng = g+1
+            if ng < gscore.get(nst, math.inf):
+                gscore[nst] = ng
+                heapq.heappush(open_heap, (ng + heuristic(nst), ng, nst, path+[move]))
+    return None
+
+# Hill Climbing (simple greedy restart hill climb)
+def hill_climbing(start, heuristic=manhattan, max_restarts=50, max_steps=1000):
+    best_global = None
+    for restart in range(max_restarts):
+        cur = list(start)
+        cur = tuple(cur)
+        cur_h = heuristic(cur)
+        steps = 0
+        while steps < max_steps:
+            nbrs = neighbors(cur)
+            # choose best neighbor (lowest heuristic)
+            improvements = []
+            for nst, move in nbrs:
+                improvements.append((heuristic(nst), nst, move))
+            improvements.sort(key=lambda x: x[0])
+            best_h, best_nst, best_move = improvements[0]
+            if best_h < cur_h:
+                cur, cur_h = best_nst, best_h
+                steps += 1
+                if cur == GOAL:
+                    return True, []  # we found goal (we're not tracking exact move sequence here)
+            else:
+                break  # local maxima
+        # random restart: make random moves to diversify
+        cur = tuple(random.sample(start, 9))
+    return False, None
+
+if __name__ == "__main__":
+    # Example start state (solvable)
+    start = (1,2,3,4,0,6,7,5,8)
+    print("Start:", start)
+    print("Misplaced:", misplaced_tiles(start), "Manhattan:", manhattan(start))
+
+    print("\nBFS (shortest path):")
+    t0 = time.time()
+    path = bfs(start)
+    print("Time:", time.time()-t0, "Moves:", path, "Length:", len(path) if path else None)
+
+    print("\nA* (Manhattan):")
+    t0 = time.time()
+    path = astar(start, manhattan)
+    print("Time:", time.time()-t0, "Moves:", path, "Length:", len(path) if path else None)
+
+    print("\nDFS (limit 20):")
+    t0 = time.time()
+    path = dfs(start, limit=20)
+    print("Time:", time.time()-t0, "Moves:", path, "Length:", len(path) if path else None)
+
+    print("\nHill climbing (greedy restarts):")
+    t0 = time.time()
+    found, _ = hill_climbing(start, manhattan)
+    print("Time:", time.time()-t0, "Found:", found)
